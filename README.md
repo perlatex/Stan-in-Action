@@ -1,2 +1,2 @@
 # Stan-in-Action
-Some materials about Bayesian statistical modeling using R and Stan.
+Code for a workshop about Bayesian Data Analysis using R and Stan
