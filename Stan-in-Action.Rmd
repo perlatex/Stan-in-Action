@@ -594,7 +594,7 @@ knitr::include_graphics("./images/qfg.png")
 - Stan 使用先进的采样技术，允许复杂的贝叶斯模型快速收敛，Stan用的是Hamiltonian Monte Carlo技术的 No-U-turn 采样器
 
 - Stan提供了与（R，Python，shell，MATLAB，Julia，Stata）流行语言的接口
-   - 在R语言里用rstan，[CmdRstanR](https://mc-stan.org/cmdstanr/index.html) 包，CmdStanR 能随时跟进最新 Stan 的更新
+   - 在R语言里用rstan，[CmdStanR](https://mc-stan.org/cmdstanr/index.html) 包，CmdStanR 能随时跟进最新 Stan 的更新
 
    - 在Python用PyStan包
 
@@ -1000,7 +1000,7 @@ fit3$summary(variables = c("Rho")) %>%
 
 我们再来看看，非线性的例子
 ```{r}
-set.seed(1024)
+set.seed(999)
 df <- tibble(
   x = runif(n = 10, min = 0, max = 10),
   y = rnorm(n = 10, mean = 5*exp(-0.3*x), sd = 0.5)
