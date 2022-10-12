@@ -29,6 +29,7 @@ knitr::opts_chunk$set(
   fig.show = "hold",
   fig.showtext = TRUE
 )
+knitr::knit_engines$set(stan = cmdstanr::eng_cmdstan)
 ```
 
 
@@ -38,11 +39,10 @@ library(tidybayes)
 library(ggdist)
 library(cmdstanr)
 check_cmdstan_toolchain(fix = TRUE, quiet = TRUE)
-options(mc.cores = parallel::detectCores())
 ```
 
 
-Stan 是当前主流的概率编程语言，主要用于贝叶斯推断，它使用先进的 Hamiltonian Monte Carlo (HMC)采样技术(非MCMC)，允许复杂的贝叶斯模型快速收敛，在社会学、生物、医学、物理、工程和商业等领域有广泛的应用。本报告介绍贝叶斯统计推断的数学原理以及Stan应用，并通过案例演示Stan在统计建模中的强大功能。
+Stan 是当前主流的概率编程语言，主要用于贝叶斯推断，它使用先进的 Hamiltonian Monte Carlo (HMC)采样技术，允许复杂的贝叶斯模型快速收敛，在社会学、生物、医学、物理、工程和商业等领域有广泛的应用。本报告介绍贝叶斯统计推断的数学原理以及Stan应用，并通过案例演示Stan在统计建模中的强大功能。
 
 
 # 我们今天讲一个数据故事
@@ -235,14 +235,13 @@ p(\theta \vert Y) \propto p(\theta) \prod^N_{n=1} p(y_n \vert \theta)
 $$
 
 
-接着，我们两边取对数，连乘变成了连加。也就说，我们计算的是**对数概率(log probabilities)**。
-对数概率可以有效提高数值稳定性
+接着，我们两边取对数，连乘变成了连加。也就说，我们计算的是**对数概率(log probabilities)**。使用对数概率可以有效提高数值稳定性
 
 $$
 \text{log}\ p(\theta \vert Y) \propto \text{log}\ p(\theta) + \sum^N_{n=1} \text{log}\ p(y_n \vert \theta)
 $$
 
-看看这个等式，感觉技术上有可操作性了，没错，它就是贝叶斯数据分析的**灵魂**，我们做贝叶斯数据分析都是仰仗这个等式。
+看看这个等式，感觉技术上有可操作性了，没错，它就是贝叶斯数据分析的**灵魂**，我们做贝叶斯计算都是仰仗这个等式。
 
 我们跃跃欲试了，不过，先忘掉之前的统计方法。
 
@@ -256,7 +255,7 @@ $$
 - 方差在[0, 50]范围内都有可能，那就假定每个值的可能性都相等吧。
 
 
-这两点没有问题，因为符合现实情况，合情合理。现在把我们的猜测画出来就是这样的，
+这两点没有问题，因为符合现实情况，合情合理。现在把我们的猜测画出来，就是这样的，
 
 ```{r, fig.width = 6, fig.height = 2.5}
 library(patchwork)
@@ -319,7 +318,7 @@ tidyr::crossing(
 ## 先验概率的对数
 
 第三步，在参数空间里，计算每个参数在先验分布下的概率密度对数，即下面等式红色部分
-(不是说均值是正态分布的么，那么160出现的概率是多少，161出现的概率是多少，当然最后要求各对数)
+(不是说均值是正态分布的么，那么160出现的概率是多少，161出现的概率是多少，当然最后求对数)
 
 $$
 \text{log}\ p(\theta \vert Y) \propto {\color{red}{\text{log}\ p(\theta)}} + \sum^N_{n=1} \text{log}\ p(y_n \vert \theta)
@@ -574,7 +573,7 @@ knitr::include_graphics("./images/Stanislaw-Ulam.png")
 
 ## Stan如何工作
 
-这里面太多数学和计算机的内容了，我真不太懂，求放过。
+这里面太多数学和计算机的内容了，是核心科技，我真不太懂，求放过。
 
 ```{r echo=FALSE, out.width = '65%'}
 knitr::include_graphics("./images/qfg.png")
@@ -722,7 +721,7 @@ fit1$draws(format = "df") %>%
 knitr::include_graphics("./images/samples.png")
 ```
 
-还是看图过瘾
+还是看图过瘾，赶紧画个图吧
 ```{r, out.width='50%'}
 fit1 %>% 
   spread_draws(mu, sigma) %>% 
@@ -768,7 +767,7 @@ d %>%
 ```
 
 
-假定身高和体重满足线性关系，数学表达式如下，我**强烈推荐**这样写
+假定身高和体重满足线性关系，数学表达式如下
 
 $$
 \begin{aligned}
@@ -777,7 +776,7 @@ $$
 \end{aligned}
 $$
 
-因为，这种写法可以很方便地过渡到其它模型，后面会看到。
+我**强烈推荐**这样写，因为，这种写法可以很方便地过渡到其它模型。
 
 
 
@@ -844,7 +843,7 @@ fit2 %>%
 	facet_wrap(vars(.variable), scales = "free")
 ```
 
-以及可信赖区间
+以及最高密度区间
 ```{r}
 fit2 %>% 
   gather_draws(alpha, beta, sigma) %>% 
@@ -874,7 +873,7 @@ d %>%
 ```
 
 
-这里不是单纯的两个独立的回归分析，而是分成男孩和女孩两组，模型中我们既考虑组内的变化，又要考虑组与组的之间的关联。因此，多层模型写成如下形式
+这里不是单纯的两个独立的回归分析，而是分成男孩和女孩两组，模型中我们既要考虑组内的变化，又要考虑组与组的之间的变化。因此，多层模型写成如下形式
 
 
 $$
@@ -969,7 +968,7 @@ model3$print()
 ```
 
 
-可以得到男孩和女孩的不同的截距和斜率
+可以得到男孩和女孩不同的截距和斜率
 ```{r, echo=FALSE}
 fit3$summary(variables = c("beta")) %>% 
   knitr::kable(format = "latex", digits = 3, booktabs = TRUE)
@@ -1023,7 +1022,7 @@ $$
 
 
 
-这个问题，和李教授给我布置的作业，有点类似，应该是多层和非线性的组合。我们这里的表达式要简单很多。
+李教授给我布置的作业，是多层和非线性的组合。我们这里的问题要简单很多，但结构上是类似的。
 
 
 
@@ -1077,8 +1076,8 @@ fit4 <- model4$sample(data = stan_data4)
 model4$print()
 ```
 
+## 模型的预测能力
 模型推断的好不好呢？是否捕获到数据的特征了呢？我们可以看下模型的预测能力。
-
 
 ```{r, out.width = '65%', fig.align = 'center', echo = FALSE}
 fit4 %>% 
@@ -1092,11 +1091,12 @@ fit4 %>%
   geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha = 0.3, 
               fill = "gray50"
               ) +
-  theme_classic()
+  theme_classic(base_size = 14)
 ```
 
-还算满意。
+一般来说，模型是一种探测手段，用于探测数据的产生机制。我们推断出参数的分布，就可以从后验分布中随机抽取重复样本集。如果一个贝叶斯模型是“好”的，那么从它模拟产生的数据应该与实际观察到的数据很类似。
 
+## 模型对参数的恢复
 
 事实上，数据是我模拟的，真实值$a = 5, b = 0.3$，模型给出的参数估计是
 ```{r, echo=FALSE}
@@ -1105,6 +1105,13 @@ fit4$summary(variables = c("a", "b")) %>%
 ```
 
 模型捕获和还原了数据参数。
+
+```{r, out.width = '65%'}
+true_a_b <- c(a = 5, b = 0.3)
+posterior_a_b <- fit4$draws(format = "draws_matrix", variables = c("a", "b"))
+bayesplot::mcmc_recover_hist(posterior_a_b, true = true_a_b)
+```
+
 
 
 # 如何开始
