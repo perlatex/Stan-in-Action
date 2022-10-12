@@ -75,7 +75,7 @@ d %>%
 
 如果您是校长，您对结果满意？
 
-校长很显然不满意，因为随机选择的这200个学生，相对全校学生而言，是一个很小的样本，难免以偏概全了。这个164.89可靠性有多高，或者不确定性是多少？你看的校长脸色有些不好看，弱弱地说：“要不我重新再找200个学生，再做一次，或者再找第三组的200个学生，然后第四组，这样重复很多次”，你怕校长不明白你的意思，还把想法画成思维导图
+应该不满意，因为选择的这200个学生，相对全校学生而言，是一个很小的样本，难免以偏概全了。这个164.89可靠性有多高，或者不确定性是多少？你看到校长脸色有些不好看，弱弱地说：“要不我重新再找200个学生，再做一次，或者再找第三组的200个学生，然后第四组，这样重复很多次”，你怕校长不明白你的意思，还把想法画成思维导图
 
 ```{r, out.width='75%', fig.align='center', echo = F}
 knitr::include_graphics("./images/samplingdistribution_schematic.png")
@@ -95,13 +95,20 @@ knitr::include_graphics("./images/samplingdistribution_schematic.png")
 
 搞统计的人发明了一个很不错的方法[Bootstrapping](http://en.wikipedia.org/wiki/Bootstrapping_(statistics))，**有放回的重复抽样**，什么意思呢？我举个通俗的例子：
 
+```{r, out.width='75%', fig.align='center', echo = F}
+knitr::include_graphics("./images/bootstrap-sampling-with-replacement.png")
+```
+
 - 假定这里有一个口袋，里面装着200个球，你摸一个出来，记录下这个球的重量，然后放回去，搅拌一下，再摸一个出来，称下重量，再放回去，如此往复，记录到200个值后，就停下来，这200个值称之为第一个重抽样样本，然后计算下**均值**。ok，第一个样本的工作完成。
-- 然后我们第二个样本，
+- 然后第二个样本
 - 第三个样本...
 - 直到1000个重抽样样本，也就得到了1000个均值
 - 最后看看这1000个均值的分布
 
 
+
+
+画出思维导图如下
 ```{r, out.width='75%', fig.align='center', echo = F}
 knitr::include_graphics("./images/bootstrapping_schematic.png")
 ```
@@ -165,7 +172,7 @@ ci
 
 
 
-置信区间，是频率学的词汇。关于置信区间，要多说两句，我们想统计的是全校同学的身高均值，这是我们的目标，对应到这张图中，这个黑色圆点，它代表着全校同学的平均身高，它是客观存在的，并且有一个确定的值（只是我们不知道）。
+置信区间，是频率学的词汇。关于95%的置信区间，要多说两句，我们想统计的是全校同学的身高均值，这是我们的目标，对应到这张图中，这个黑色圆点，它代表着全校同学的平均身高，它是客观存在的，并且有一个确定的值（只是我们不知道）。
 
 ```{r, out.width='85%', fig.align='center', echo = F}
 knitr::include_graphics("./images/frequentist_confidence_interval.jpg")
@@ -189,7 +196,7 @@ knitr::include_graphics("./images/frequentist_confidence_interval.jpg")
 什么是新鲜的呢？
 
 ```{r, out.width='85%', fig.align='center', echo = F}
-knitr::include_graphics("./images/bayesian_vs_frequentist_meme.png")
+knitr::include_graphics("./images/bayesian_vs_frequentist_meme2.jpg")
 ```
 
 对的，贝叶斯。我们已经久仰贝叶斯大名。
@@ -287,7 +294,7 @@ plot_prior
 
 ## 参数空间
 
-第二步，我们需要构建一个**参数空间**，类似网格一样的东西。具体做法是，先指定参数的范围，大一点没关系，然后把这个范围内的所有**可能参数组合**都罗列出来，比如这里构建 1000x1000 个(mu, sigma)参数空间 （类似九九乘法表）
+第二步，我们需要构建一个**参数空间**，类似网格一样的东西。具体做法是，先指定参数的范围，大一点没关系，然后把这个范围内的所有**可能参数组合**都罗列出来，类似九九乘法表，比如这里构建 1000x1000 个($\mu$, $\sigma$)参数空间 
 
 
 ```{r out.width = '50%', echo = FALSE}
@@ -305,11 +312,12 @@ tidyr::crossing(
   pivot_wider(
     names_from = sigma,
     values_from = w,
-    names_glue = "sigma = {sigma}"
+    names_glue = "$\\sigma$ = {sigma}"
   ) %>% 
   mutate(
-    mu = glue::glue("mu = {mu}")
-  )
+    mu = glue::glue("$\\mu$ = {mu}")
+  ) %>% 
+  knitr::kable(format = "latex", escape = FALSE)
 ```
 
 
@@ -334,12 +342,12 @@ knitr::include_graphics("images/grid/02prior.png")
 
 ### 对数似然
 
-第四步，在参数空间里，计算每个参数组合所对应的分布下，观察到的200个身高值的**对数似然**之和，即下面等式红色部分
+第四步，在参数空间里，每个参数组合所对应的分布下，计算观察到的200个身高值的**对数似然**之和，即下面等式红色部分
 $$
 \text{log}\ p(\theta \vert Y) \propto \text{log}\ p(\theta) + {\color{red}{\sum^N_{n=1} \text{log}\ p(y_n \vert \theta)}}
 $$
 
-这里有1000x1000 个(mu, sigma)组合，所以会产生 1000x1000 个值
+这里有1000x1000 个($\mu$, $\sigma$)组合，所以会产生 1000x1000 个值
 
 ```{r out.width = '100%', fig.align='left', echo = FALSE}
 knitr::include_graphics("images/grid/03likelihood.png")
@@ -573,12 +581,13 @@ knitr::include_graphics("./images/Stanislaw-Ulam.png")
 
 ## Stan如何工作
 
-这里面太多数学和计算机的内容了，是核心科技，我真不太懂，求放过。
+这里面太多数学和计算机的内容了，是核心科技，我真不太懂，求放过。不懂原理，也不用太纠结，Stan 只是一个工具，好比汽车一样，安全驾驶就ok, 至于发动机原理可以先放一放
 
 ```{r echo=FALSE, out.width = '65%'}
 knitr::include_graphics("./images/qfg.png")
 ```
 
+## 如何使用Stan
 
 - Stan首先会把Stan代码翻译成C++，然后在本地编译
 
@@ -588,10 +597,10 @@ knitr::include_graphics("./images/qfg.png")
    - 在R语言里用rstan，[CmdRstanR](https://mc-stan.org/cmdstanr/index.html) 包，CmdStanR 能随时跟进最新 Stan 的更新
 
    - 在Python用PyStan包
-   
-第三点，这点很重要，因为一般来说，我们不会单独使用Stan，而是在R语言里，完成数据规整变型后，喂给Stan，Stan返回样本后，可以接着在R里统计分析。也就说，**Stan可以当作你已经掌握的数据分析工具的一种插件，当作R语言的一种扩展和增强。** 
 
-在R语言里，还可以用bayesplot，tidybayes, loo 等宏包帮助我们完成Stan模型可视化、规整和分析。也就说，R 与 Stan 配合非常默契，简直就是绝配。 
+- 把Stan当作R/Python的一个宏包。一般来说，我们不会单独使用Stan，而是在R语言里完成数据规整变型后，喂给Stan，Stan返回样本后，可以接着在R里统计分析。也就说，**Stan可以当作你已经掌握的数据分析工具的一种插件，当作R语言的一种扩展和增强。** 
+
+- 在R语言里，还可以用bayesplot，tidybayes, loo 等宏包帮助我们完成Stan模型可视化、规整和分析。也就说，R 与 Stan 配合非常默契，简直就是绝配。 
 
 
 
@@ -772,7 +781,10 @@ d %>%
 $$
 \begin{aligned}
 \text{height}_i &\sim \operatorname{normal}(\mu_i, \,\, \sigma)\\
-\mu_i &= \alpha + \beta \ \text{weight}_i 
+\mu_i &= \alpha + \beta \ \text{weight}_i \\
+\alpha        & \sim \operatorname{normal}(0, 4) \\
+\beta         & \sim \operatorname{normal}(0, 4) \\
+\sigma        & \sim \operatorname{half-Cauchy}(1) 
 \end{aligned}
 $$
 
@@ -828,7 +840,7 @@ model2$print()
 ```
 
 
-获得样本后很容易得到参数的分布
+获得样本后，很容易得到参数的后验分布
 
 ```{r, fig.asp = 0.35}
 fit2 %>% 
@@ -869,7 +881,9 @@ d %>% head(6)
 d %>% 
   ggplot(aes(x = weight, y = height, color = sex)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = "y ~ x", se = FALSE)
+  geom_smooth(method = "lm", formula = "y ~ x", se = FALSE) +
+  scale_color_manual(values = c("boy" = "blue", "girl" = "red")) +
+  theme_gray(base_size = 14)
 ```
 
 
@@ -986,6 +1000,7 @@ fit3$summary(variables = c("Rho")) %>%
 
 我们再来看看，非线性的例子
 ```{r}
+set.seed(1024)
 df <- tibble(
   x = runif(n = 10, min = 0, max = 10),
   y = rnorm(n = 10, mean = 5*exp(-0.3*x), sd = 0.5)
@@ -1001,7 +1016,7 @@ df %>%
 ```
 
 
-假定x和y满足下面等式的关系，如何估计 $a$ 和 $b$
+假定x和y满足下面等式的关系
 
 $$
 \begin{aligned}
@@ -1020,7 +1035,7 @@ y_i & \sim \operatorname{normal}(\mu_i, \sigma) \\
 \end{aligned}
 $$
 
-
+这里的问题是，如何估计 $a$ 和 $b$ ？
 
 李教授给我布置的作业，是多层和非线性的组合。我们这里的问题要简单很多，但结构上是类似的。
 
@@ -1050,7 +1065,9 @@ model {
 
 generated quantities {
   vector[N] y_rep;
+  vector[N] y_fit;
   for (n in 1:N) {
+    y_fit[n] = a * exp(-b * x[n]);
     y_rep[n] = normal_rng(a * exp(-b * x[n]), sigma);
   }
 }
@@ -1079,12 +1096,19 @@ model4$print()
 ## 模型的预测能力
 模型推断的好不好呢？是否捕获到数据的特征了呢？我们可以看下模型的预测能力。
 
-```{r, out.width = '65%', fig.align = 'center', echo = FALSE}
-fit4 %>% 
+```{r}
+p1 <- fit4 %>% 
+  tidybayes::gather_draws(y_fit[i], ndraws = 200) %>% 
+  left_join(df %>% mutate(i = 1:n()), by = "i") %>% 
+  ggplot(aes(x = x, y = y)) + 
+  geom_point(data = df, size = 5) +
+  geom_line(aes(y = .value, group = .draw), alpha = 0.3, color = "gray") +
+  theme_classic(base_size = 14)
+
+p2 <- fit4 %>% 
   tidybayes::gather_draws(y_rep[i]) %>% 
   mean_qi() %>% 
   bind_cols(df) %>% 
-  
   ggplot(aes(x, y)) + 
   geom_point(size = 5) +
   geom_line(aes(y = .value), size = 2, color = "orange") +
@@ -1093,6 +1117,13 @@ fit4 %>%
               ) +
   theme_classic(base_size = 14)
 ```
+
+
+```{r, fig.asp = 0.4, out.width= "90%"}
+library(patchwork)
+p1 + p2
+```
+
 
 一般来说，模型是一种探测手段，用于探测数据的产生机制。我们推断出参数的分布，就可以从后验分布中随机抽取重复样本集。如果一个贝叶斯模型是“好”的，那么从它模拟产生的数据应该与实际观察到的数据很类似。
 
@@ -1104,7 +1135,7 @@ fit4$summary(variables = c("a", "b")) %>%
   knitr::kable(format = "latex", digits = 3, booktabs = TRUE)
 ```
 
-模型捕获和还原了数据参数。
+模型捕获和还原了参数
 
 ```{r, out.width = '65%'}
 true_a_b <- c(a = 5, b = 0.3)
