@@ -137,6 +137,21 @@ bootstrap_repeat <- function(df, reps = 30){
 
 ```
 
+当然也可以使用[tidymodels](https://rsample.tidymodels.org/)宏包完成
+```{r, echo=TRUE}
+library(tidymodels)
+
+boots <- rsample::bootstraps(data = d, times = 1000)
+
+df_bootstrap <- boots %>%
+  mutate(
+    mean_height = map_dbl(splits, ~ .x %>% analysis() %>% pull(height) %>% mean())
+  )
+
+df_bootstrap %>% 
+  head(6) 
+```
+
 
 很快得到了1000个均值
 ```{r}
@@ -724,14 +739,14 @@ model1$print()
 ```
 
 
-啊哈，得到了样本
+默认情况下，派出的4个宇航员从不同的起点出发去采样，每个宇航员带回1000个样本，因此会带回4000个样本。
 ```{r}
 fit1$draws(format = "df") %>% 
   head(16)
 ```
 
 
-是最高兴的事情
+啊哈，得到了样本。是最高兴的事情
 ```{r, out.width='50%', fig.align='center', echo = F}
 knitr::include_graphics("./images/samples.png")
 ```
