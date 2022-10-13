@@ -581,24 +581,30 @@ knitr::include_graphics("./images/Stanislaw-Ulam.png")
 
 ## Stan如何工作
 
-这里面太多数学和计算机的内容了，是核心科技，我真不太懂，求放过。不懂原理，也不用太纠结，Stan 只是一个工具，好比汽车一样，安全驾驶就ok, 至于发动机原理可以先放一放
+Stan 先编译再抽样
+
+- Stan首先会把Stan代码翻译成C++，然后在本地编译。
+
+- Stan 使用先进的采样技术，允许复杂的贝叶斯模型快速收敛，Stan用的是Hamiltonian Monte Carlo技术的 No-U-turn 采样器。
+
+把你模型的后验概率想象成一个有峰有谷的小行星。
+HMC/NUTS的宇航员是在这个星球上着陆的，宇航员们的目标是在这片土地上找到最高的山峰。在每一个点上测量海拔，这是可行的，但如果小行星真的很大的话，那就要花很长时间。这就需要高级的算法了。
+
+这里面太多数学和计算机的内容了，是核心科技，我真不太懂，求放过。不懂原理，也不用太纠结，Stan 只是一个工具，好比汽车一样，安全驾驶就好，至于发动机原理可以先放一放。
 
 ```{r echo=FALSE, out.width = '65%'}
 knitr::include_graphics("./images/qfg.png")
 ```
 
+
 ## 如何使用Stan
 
-- Stan首先会把Stan代码翻译成C++，然后在本地编译
-
-- Stan 使用先进的采样技术，允许复杂的贝叶斯模型快速收敛，Stan用的是Hamiltonian Monte Carlo技术的 No-U-turn 采样器
+我是把Stan当作R/Python的一个宏包。一般来说，我们不会单独使用Stan，而是在R语言里完成数据规整变型后，喂给Stan，Stan返回样本后，可以接着在R里统计分析。也就说，**Stan可以当作你已经掌握的数据分析工具的一种插件，当作R语言的一种扩展和增强。**
 
 - Stan提供了与（R，Python，shell，MATLAB，Julia，Stata）流行语言的接口
    - 在R语言里用rstan，[CmdStanR](https://mc-stan.org/cmdstanr/index.html) 包，CmdStanR 能随时跟进最新 Stan 的更新
 
    - 在Python用PyStan包
-
-- 把Stan当作R/Python的一个宏包。一般来说，我们不会单独使用Stan，而是在R语言里完成数据规整变型后，喂给Stan，Stan返回样本后，可以接着在R里统计分析。也就说，**Stan可以当作你已经掌握的数据分析工具的一种插件，当作R语言的一种扩展和增强。** 
 
 - 在R语言里，还可以用bayesplot，tidybayes, loo 等宏包帮助我们完成Stan模型可视化、规整和分析。也就说，R 与 Stan 配合非常默契，简直就是绝配。 
 
@@ -1141,6 +1147,145 @@ fit4$summary(variables = c("a", "b")) %>%
 true_a_b <- c(a = 5, b = 0.3)
 posterior_a_b <- fit4$draws(format = "draws_matrix", variables = c("a", "b"))
 bayesplot::mcmc_recover_hist(posterior_a_b, true = true_a_b)
+```
+
+# 假设检验
+
+直播的时候最后一个女生提问，我没听清楚，所以答非所问了，抱歉抱歉。事实上，假设检验的本质是线性回归，所以[贝叶斯也能做假设检验](https://github.com/perlatex/applied-stats/blob/main/rmd/07_t_testBEST.Rmd)。这里，我们仍然以身高为例，检验男生的身高是否明显高于女生身高？数据中用1代表女孩，2代表男孩
+
+```{r}
+d <- raw %>% 
+  select(id, sex, height) %>% 
+  mutate(gender = if_else(sex == "girl", 1, 2)) # girl = 1, boy = 2
+
+d %>% head(6)
+```
+
+```{r, fig.asp = 0.816, out.width = '65%'}
+d %>% 
+  ggplot(aes(x = sex, y = height)) +
+  geom_boxplot()
+```
+
+## Stan 代码
+
+假定男孩和女孩的身高服从**各自的**正态分布
+
+$$
+\begin{aligned}
+\textrm{height}_i & \sim \textrm{normal}(\mu_{j[i]}, \, \sigma_{j[i]}) \\
+\mu_j  &\sim  \textrm{normal}(\textrm{mean_height}, \, 2) \\
+\sigma_j &\sim  \textrm{cauchy}(0, \, 1) 
+\end{aligned} 
+$$
+
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE, results='hide'}
+stan_program5 <- write_stan_file("
+data {
+  int<lower=1> N;                            
+  int<lower=2> n_groups;                     
+  vector[N] y;                               
+  int<lower=1, upper=n_groups> group_id[N];  
+}
+transformed data {
+  real mean_y;
+  mean_y = mean(y); 
+}
+parameters {
+  vector[2] mu;                    // Estimated group means for each
+  vector<lower=0>[2] sigma;        // Estimated group sd for each
+}
+model {
+  mu ~ normal(mean_y, 2);
+  sigma ~ cauchy(0, 1);
+  for (n in 1:N){
+    y[n] ~ normal(mu[group_id[n]], sigma[group_id[n]]);
+  }
+}
+generated quantities {
+  real mu_diff;
+  real cohen_d;
+  real cles;
+  mu_diff = mu[2] - mu[1];
+  cohen_d = mu_diff / sqrt(sum(sigma)/2);
+  cles = normal_cdf(mu_diff / sqrt(sum(sigma)), 0, 1);
+}
+
+")
+
+
+stan_data5 <- d %>% 
+  tidybayes::compose_data(
+    N        = nrow(.), 
+    n_groups = n_distinct(gender), 
+    group_id = gender, 
+    y        = height
+  )
+
+
+
+model5 <- cmdstan_model(stan_file = stan_program5)
+fit5 <- model5$sample(data = stan_data5)
+```
+
+
+```{r, echo=FALSE}
+model5$print()
+```
+
+
+## 等效检验
+
+我们一般会采用实用等效区间 region of practical equivalence [ROPE](https://easystats.github.io/bayestestR/articles/region_of_practical_equivalence.html)。实用等效区间，就是我们感兴趣值附近的一个区间，比如这里的均值差。频率学中的零假设是看均值差是否为0，贝叶斯则是看均值差有多少落入0附近的区间。具体方法就是，先算出后验分布的高密度区间，然后看这个高密度区间落在[-0.1, 0.1]的比例。
+
+
+```{r, eval=FALSE}
+lower <- -0.1*sd(d$height)
+upper <-  0.1*sd(d$height)
+
+fit5 %>% 
+  tidybayes::spread_draws(mu_diff) %>%
+  filter(
+    mu_diff > ggdist::mean_hdi(mu_diff, .width = c(0.89))$ymin,
+    mu_diff < ggdist::mean_hdi(mu_diff, .width = c(0.89))$ymax
+  ) %>%
+  summarise(
+    percentage_in_rope = mean(between(mu_diff, lower, upper))
+  )
+```
+
+在做假设检验的时候，我们内心是期望，后验概率的**高密度区间**落在**实际等效区间**的比例越小越小，如果小于2.5%，我们就可以拒绝零假设了；如果大于97.5%，我们就接受零假设。
+
+
+```{r}
+fit5 %>% 
+  tidybayes::spread_draws(mu_diff) %>%
+  pull(mu_diff) %>% 
+  bayestestR::rope(x,
+    range = c(-0.1, 0.1)*sd(d$height),
+    ci = 0.89,
+    ci_method = "HDI"
+  )
+```
+
+
+```{r, out.width = '65%'}
+fit5 %>%
+  tidybayes::spread_draws(mu_diff) %>%
+  ggplot(aes(x = mu_diff)) +
+  stat_eye(
+    side = "right",
+    fill = "skyblue",
+    point_interval = mode_hdi,
+    .width = c(0.5, 0.89),
+    interval_colour = "red",
+    point_colour = "red",
+    width = 15.5,
+    height = 0.1
+  ) +
+  geom_vline(xintercept = c(-0.1, 0.1), linetype = "dashed", size = 1) +
+  labs(x = "mu_diff", y = NULL)
 ```
 
 
