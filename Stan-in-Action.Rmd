@@ -815,6 +815,11 @@ $$
 我**强烈推荐**这样写，因为，这种写法可以很方便地过渡到其它模型。
 
 
+```{r, out.width = '95%', fig.align = 'center', echo = FALSE. fig.cap = "线性模型示意图"}
+knitr::include_graphics(here::here("images", "lm_concept.jpg"))
+```
+
+
 
 ## 从模型到Stan代码
 
